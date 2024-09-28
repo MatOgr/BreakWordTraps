@@ -1,15 +1,27 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "break_word_traps"
 description = "AI microservice for BreakWordTraps"
 version = "0.0.1"
 readme = "README.md"
 dependencies = [
+  "aiofile",
   "fastapi",
   "python-multipart",
   "uvicorn",
-  "uvloop",
+  "uvloop ; platform_system != 'Windows'",
   "typer",
   "rich",
+  "audio-extract"
+]
+
+[project.optional-dependencies]
+asr = [
+  "stable-ts[hf]",
+  "py-readability-metrics",
 ]
 
 [project.scripts]
