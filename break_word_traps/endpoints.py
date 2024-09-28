@@ -15,7 +15,7 @@ class _FastAPIServer:
         self._app.middleware("http")(self.validate_api_key)
         for method, endpoint, func in (
             ("get", "/health", self.health),
-            ("post", "/process_video", self.process_video),
+            ("post", "/process-video", self.process_video),
         ):
             register_func = getattr(self._app, method, None)
             if register_func is None:
@@ -31,9 +31,9 @@ class _FastAPIServer:
     def health(self):
         return {"health": "OK"}
 
-    def process_video(self, request: Request, files: List[UploadFile]):
+    def process_video(self, request: Request, file: UploadFile):
         # TODO add processing
-        ...
+        return {"result": "OK"}
 
     @property
     def app(self):
