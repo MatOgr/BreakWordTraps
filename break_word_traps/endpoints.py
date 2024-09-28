@@ -1,6 +1,9 @@
+from typing import Literal
 from fastapi import FastAPI, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List
+from fastapi.responses import JSONResponse
+
+from .tools.fer.analyzer import Emotion, retrieve_emotion
 
 
 class _FastAPIServer:
@@ -18,6 +21,7 @@ class _FastAPIServer:
         for method, endpoint, func in (
             ("get", "/health", self.health),
             ("post", "/process-video", self.process_video),
+            ("post", "/retrieve-emotion-test", self.process_image),
         ):
             register_func = getattr(self._app, method, None)
             if register_func is None:
@@ -30,6 +34,12 @@ class _FastAPIServer:
     def process_video(self, request: Request, files: List[UploadFile]):
         # TODO add processing
         return {"result": "OK"}
+
+    async def process_image(
+        self, request: Request, file: UploadFile
+    ) -> Emotion | Literal["No emotion detected"]:
+        content = await file.read()
+        return retrieve_emotion(content)
 
     @property
     def app(self):
