@@ -32,7 +32,7 @@ class Readability(BaseModel):
     gunning_fog_grade: str = Field(alias="gunningFogGrade")
 
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class Transcript(BaseModel):
@@ -50,7 +50,7 @@ class VideoResult(BaseModel):
     errors: List[Error] = Field(default_factory=list)
 
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class Overall(BaseModel):
@@ -59,7 +59,7 @@ class Overall(BaseModel):
     words_per_minute: float = Field(alias="wordsPerMinute")
 
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class Statistic(BaseModel):
@@ -77,4 +77,4 @@ class ResultsDTO(BaseModel):
     summary: Summary
 
     class Config:
-        allow_population_by_field_name = True
+        populate_by_name = True
