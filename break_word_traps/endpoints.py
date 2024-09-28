@@ -1,6 +1,7 @@
 import os
 from fastapi import FastAPI, Request, UploadFile
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 
 API_KEY_NAME = "x-api-key"
@@ -15,6 +16,12 @@ class _FastAPIServer:
 
         # Disable api-key verification
         # self._app.middleware("http")(self.validate_api_key)
+        self._app.add_middleware(
+            CORSMiddleware,
+            allow_origins="http://localhost:5173",
+            allow_methods="*",
+            allow_headers="*",
+        )
         for method, endpoint, func in (
             ("get", "/health", self.health),
             ("post", "/process-video", self.process_video),
