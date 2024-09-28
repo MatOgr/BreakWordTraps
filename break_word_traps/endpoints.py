@@ -1,13 +1,28 @@
+import aiofile
+import asyncio
+import shutil
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
+from pathlib import Path
+from uuid import uuid4
+
+from break_word_traps.extract_autio import extract
+
+
+async def save_uploaded_file(file: UploadFile, path: Path, chunk_size=2048):
+    async with aiofile.async_open(str(path), "wb") as fd:
+        while chunk := await file.read(chunk_size):
+            await fd.write(chunk)
+    return path
 
 
 class _FastAPIServer:
-    _app = FastAPI()
-
     def __init__(self):
+        self._app = FastAPI(lifespan=self.lifecycle)
         self.api_prefix = "/api"
+        self.resources_path = Path("./resources")
 
         self._app.add_middleware(
             CORSMiddleware,
@@ -24,10 +39,28 @@ class _FastAPIServer:
                 raise Exception(f"Method {method} not known")
             register_func(self.api_prefix + endpoint)(func)
 
+    @asynccontextmanager
+    async def lifecycle(self, app: FastAPI):
+        self.resources_path.mkdir(exist_ok=True, parents=True)
+        yield
+        shutil.rmtree(self.resources_path)
+
     def health(self):
         return {"health": "OK"}
 
-    def process_video(self, request: Request, files: List[UploadFile]):
+    async def process_video(self, request: Request, files: List[UploadFile]):
+        saved_files = await asyncio.gather(
+            *[
+                save_uploaded_file(
+                    file,
+                    self.resources_path
+                    / f"{uuid4()}{'_' + file.filename if hasattr(file, "filename") else ''}",
+                )
+                for file in files
+            ]
+        )
+        for saved_file in saved_files:
+            extract(saved_file, saved_file.with_suffix(".wav"))
         # TODO add processing
         return {"result": "OK"}
 
