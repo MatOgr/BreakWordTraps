@@ -15,13 +15,13 @@ warnings.simplefilter("ignore", UserWarning)
 
 
 ### Models
-name_backbone_model = "FER_static_ResNet50_AffectNet.pt"
+BACKBONE = "FER_static_ResNet50_AffectNet.pt"
 # name_LSTM_model = 'IEMOCAP'
 # name_LSTM_model = 'CREMA-D'
 # name_LSTM_model = 'RAMAS'
 # name_LSTM_model = 'RAVDESS'
 # name_LSTM_model = 'SAVEE'
-name_LSTM_model = "Aff-Wild2"
+LSTM = "Aff-Wild2"
 
 # torch
 DICT_EMO = {
@@ -36,7 +36,7 @@ DICT_EMO = {
 
 
 class FER:
-    def __init__(self, name_backbone_model, name_LSTM_model) -> None:
+    def __init__(self, name_backbone_model=BACKBONE, name_LSTM_model=LSTM) -> None:
         self.load_models(name_backbone_model, name_LSTM_model)
 
     def load_models(self, name_backbone_model, name_LSTM_model):

@@ -1,10 +1,12 @@
 import os
-from fastapi import FastAPI, Request, UploadFile
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from typing import List
+from typing import Literal
 
-API_KEY_NAME = "x-api-key"
+import numpy as np
+from fastapi import FastAPI, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from .tools.fer.analyzer import FER, Emotion
 
 
 class _FastAPIServer:
@@ -25,6 +27,7 @@ class _FastAPIServer:
         for method, endpoint, func in (
             ("get", "/health", self.health),
             ("post", "/process-video", self.process_video),
+            ("post", "/retrieve-emotion", self.process_image),
         ):
             register_func = getattr(self._app, method, None)
             if register_func is None:
@@ -32,9 +35,6 @@ class _FastAPIServer:
             register_func(self.api_prefix + endpoint)(func)
 
     async def validate_api_key(self, request: Request, call_next):
-        api_key = request.headers.get(API_KEY_NAME, None)
-        if api_key == self.api_key:
-            return await call_next(request)
         return JSONResponse(content={"error": "bad API key"}, status_code=403)
 
     def health(self):
@@ -43,6 +43,17 @@ class _FastAPIServer:
     def process_video(self, request: Request, file: UploadFile):
         # TODO add processing
         return {"result": "OK"}
+
+    def process_image(
+        self, request: Request, file: UploadFile
+    ) -> Emotion | Literal["No emotion detected"]:
+        return self.retrieve_emotion(file.file)
+
+    def retrieve_emotion(self, image: np.ndarray) -> Emotion | None:
+        fer = FER()
+        fer.eval()
+        emotion = fer.analyse_image(image)
+        return emotion
 
     @property
     def app(self):
