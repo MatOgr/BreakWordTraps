@@ -1,6 +1,7 @@
 import os
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, UploadFile
 from fastapi.responses import JSONResponse
+from typing import List
 
 API_KEY_NAME = "x-api-key"
 
@@ -12,7 +13,14 @@ class _FastAPIServer:
         self.api_key = api_key
 
         self._app.middleware("http")(self.validate_api_key)
-        self._app.get("/health")(self.health)
+        for method, endpoint, func in (
+            ("get", "/health", self.health),
+            ("post", "/process_video", self.process_video),
+        ):
+            register_func = getattr(self._app, method, None)
+            if register_func is None:
+                raise Exception(f"Method {method} not known")
+            register_func(endpoint)(func)
 
     async def validate_api_key(self, request: Request, call_next):
         api_key = request.headers.get(API_KEY_NAME, None)
@@ -22,6 +30,10 @@ class _FastAPIServer:
 
     def health(self):
         return {"health": "OK"}
+
+    def process_video(self, request: Request, files: List[UploadFile]):
+        # TODO add processing
+        ...
 
     @property
     def app(self):
