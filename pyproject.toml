@@ -1,0 +1,15 @@
+[project]
+name = "break_word_traps"
+description = "AI microservice for BreakWordTraps"
+version = "0.0.1"
+readme = "README.md"
+dependencies = [
+  "fastapi",
+  "uvicorn",
+  "uvloop",
+  "typer",
+  "rich",
+]
+
+[project.scripts]
+bwt = "break_word_traps.entrypoint:cli"
