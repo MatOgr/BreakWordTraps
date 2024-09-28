@@ -11,8 +11,10 @@ class _FastAPIServer:
 
     def __init__(self, api_key: str):
         self.api_key = api_key
+        self.api_prefix = "/api"
 
-        self._app.middleware("http")(self.validate_api_key)
+        # Disable api-key verification
+        # self._app.middleware("http")(self.validate_api_key)
         for method, endpoint, func in (
             ("get", "/health", self.health),
             ("post", "/process-video", self.process_video),
@@ -20,7 +22,7 @@ class _FastAPIServer:
             register_func = getattr(self._app, method, None)
             if register_func is None:
                 raise Exception(f"Method {method} not known")
-            register_func(endpoint)(func)
+            register_func(self.api_prefix + endpoint)(func)
 
     async def validate_api_key(self, request: Request, call_next):
         api_key = request.headers.get(API_KEY_NAME, None)
