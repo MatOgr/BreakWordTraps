@@ -4,7 +4,7 @@ import os
 import shutil
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable, List, Literal, Optional
 from uuid import uuid4
 
 import aiofile
@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from break_word_traps.extract_autio import extract
+from break_word_traps.tools.fer.types import Emotion
 from break_word_traps.utils.service_types import ServiceType
 from break_word_traps.schemas import ResultsDTO
 
@@ -77,9 +78,18 @@ class _FastAPIServer:
                 )
             )
         elif self.service_type == ServiceType.FER:
-            # TODO import and add FER
+            from break_word_traps.tools.fer.analyzer import (
+                prepare_model,
+                retrieve_emotion,
+            )
+
+            self.prepare_func = prepare_model
             endpoints.append(
-                ("post", "/process-images", self.create_process_images_endpoint())
+                (
+                    "post",
+                    "/process-images",
+                    self.create_process_images_endpoint(retrieve_emotion),
+                )
             )
         elif self.service_type == ServiceType.LLM:
             # TODO import and add LLM
@@ -151,7 +161,9 @@ class _FastAPIServer:
         return process_audio
 
     def create_process_images_endpoint(self, func: Callable):
-        async def process_images(images: List[UploadFile]):
+        async def process_images(
+            images: List[UploadFile],
+        ) -> Emotion | Literal["No emotion detected"]:
             images = await asyncio.gather(*[image.read() for image in images])
             try:
                 await self._lock.acquire()

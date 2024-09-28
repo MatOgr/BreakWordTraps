@@ -21,5 +21,17 @@ pip install -e '.[asr]'
 ```
 
 ```bash
-API_KEY="<API_KEY>" bwt run_subservice --host "<HOST>" --port "<PORT>" --llm-server-address "<LLM_SERVICE_ADDRESS>"
+API_KEY="<API_KEY>" bwt run_subservice asr --host "<HOST>" --port "<PORT>" --llm-server-address "<LLM_SERVICE_ADDRESS>"
+```
+
+## Run FER service
+
+Install dependencies
+
+```bash
+pip install -e '.[fer]'
+```
+
+```bash
+API_KEY="<API_KEY>" bwt run_subservice fer --host "<HOST>" --port "<PORT>"
 ```
