@@ -20,7 +20,10 @@ dependencies = [
 
 [project.optional-dependencies]
 whisper = [
-  "openai-whisper",
+  "stable-ts[hf]",
+]
+readability = [
+  "py-readability-metrics",
 ]
 
 [project.scripts]

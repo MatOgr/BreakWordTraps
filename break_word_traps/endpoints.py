@@ -1,14 +1,21 @@
-import aiofile
 import asyncio
 import shutil
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-from typing import List
 from pathlib import Path
+from typing import List
 from uuid import uuid4
 
+import aiofile
+import nltk
+from fastapi import FastAPI, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+
+from break_word_traps.calculate_readability import calculate_scores
 from break_word_traps.extract_autio import extract
+from break_word_traps.whisper.model import (
+    WhisperModel,
+    word_timing_to_text,
+)
 
 
 async def save_uploaded_file(file: UploadFile, path: Path, chunk_size=2048):
@@ -23,6 +30,7 @@ class _FastAPIServer:
         self._app = FastAPI(lifespan=self.lifecycle)
         self.api_prefix = "/api"
         self.resources_path = Path("./resources")
+        self.whisper_model = None
 
         self._app.add_middleware(
             CORSMiddleware,
@@ -42,6 +50,12 @@ class _FastAPIServer:
     @asynccontextmanager
     async def lifecycle(self, app: FastAPI):
         self.resources_path.mkdir(exist_ok=True, parents=True)
+        # Ensure NLTK corpus is downloaded
+        nltk.download("punkt_tab")
+        # Prepare (Speach-to-Text) model
+        self.whisper_model = WhisperModel("large")
+        # self.whisper_model = WhisperModel("large-v3")
+        self.whisper_model.prepare_model()
         yield
         shutil.rmtree(self.resources_path)
 
@@ -59,10 +73,20 @@ class _FastAPIServer:
                 for file in files
             ]
         )
+        results = []
         for saved_file in saved_files:
-            extract(saved_file, saved_file.with_suffix(".wav"))
+            audio_file = extract(saved_file, saved_file.with_suffix(".wav"))
+            word_timings = self.whisper_model.transcribe(audio_file)
+            transcribed_text = word_timing_to_text(word_timings)
+            readability_scores = calculate_scores(transcribed_text)
+            results.append(
+                {
+                    "transcribed_text": transcribed_text,
+                }
+                | readability_scores
+            )
         # TODO add processing
-        return {"result": "OK"}
+        return results
 
     @property
     def app(self):
