@@ -187,11 +187,11 @@ class _FastAPIServer:
         return process_text
 
     def return_mock_summary(self, files: List[UploadFile]) -> ResultsDTO:
-        response = [
-            ResultsDTO(
-                videos_results=[
+        response = ResultsDTO.model_validate(
+            {
+                "videosResults": [
                     {
-                        "fer_results": [
+                        "ferResults": [
                             {
                                 "emotion": "happy",
                                 "timestamp": 0,
@@ -204,32 +204,31 @@ class _FastAPIServer:
                             }
                         ],
                         "readability": {
-                            "flesch_score": 100.0,
-                            "flesch_grade": "A",
-                            "gunning_fog_score": 100.0,
-                            "gunning_fog_grade": "A",
+                            "fleschScore": 100.0,
+                            "fleschGrade": "A",
+                            "gunningFogScore": 100.0,
+                            "gunningFogGrade": "A",
                         },
                         "errors": [],
                     }
+                    for _ in files
                 ],
-                summary=[
-                    {
-                        "overall": {
-                            "total_files": 1,
-                            "total_errors": 0,
-                            "words_per_minute": 100.0,
-                        },
-                        "statistics": [
-                            {
-                                "name": "happy",
-                                "quantity": 1,
-                            }
-                        ],
-                    }
-                ],
-            )
-            for _ in files
-        ]
+                "summary": {
+                    "overall": {
+                        "totalFiles": len(files),
+                        "totalErrors": 0,
+                        "wordsPerMinute": 100.0,
+                    },
+                    "statistics": [
+                        {
+                            "name": "happy",
+                            "quantity": len(files),
+                        }
+                    ],
+                },
+            },
+        )
+        print(response)
         return response
 
     @property
