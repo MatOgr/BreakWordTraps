@@ -5,6 +5,7 @@ import warnings
 import cv2
 import numpy as np
 import torch
+from typing import Optional
 from mediapipe.python.solutions.face_mesh import FaceMesh
 from PIL import Image
 
@@ -117,10 +118,17 @@ class FER:
         return result
 
 
+MODEL: Optional[FER] = None
+
+
+def prepare_model():
+    global MODEL
+    MODEL = FER()
+    MODEL.eval()
+
+
 def retrieve_emotion(image: bytes) -> Emotion | None:
     frame = cv2.imdecode(np.frombuffer(image, np.uint8), -1)
-    fer = FER()
-    fer.eval()
     print(type(frame), frame.shape)
-    emotion = fer.analyse_image(frame)
+    emotion = MODEL.analyse_image(frame)
     return emotion
