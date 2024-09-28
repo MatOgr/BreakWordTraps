@@ -36,7 +36,7 @@ class Readability(BaseModel):
 
 
 class Transcript(BaseModel):
-    timestamp: int
+    timestamp: float
     text: str
 
 

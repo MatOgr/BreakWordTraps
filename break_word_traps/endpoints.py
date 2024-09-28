@@ -65,7 +65,10 @@ class _FastAPIServer:
                 LOG.warn("Addresses for ASR and FER servers should be defined")
             endpoints.append(("post", "/process-video", self.process_video))
         elif self.service_type == ServiceType.ASR:
-            from break_word_traps.whisper.model import prepare_model, transcribe_file
+            from break_word_traps.tools.whisper.model import (
+                prepare_model,
+                transcribe_file,
+            )
 
             if not self.llm_server_address:
                 LOG.warn("Address for LLM servers is required")

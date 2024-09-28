@@ -1,17 +1,16 @@
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 import nltk
 import stable_whisper
 from stable_whisper.result import WordTiming
 
-from break_word_traps.calculate_readability import calculate_scores
+from break_word_traps.tools.whisper.calculate_readability import calculate_scores
+from break_word_traps.schemas import Transcript
 
 
-def word_timing_to_json(timings: List[WordTiming]) -> Dict:
-    return [
-        {"word": word.word, "start": word.start, "end": word.end} for word in timings
-    ]
+def word_timing_to_json(timings: List[WordTiming]) -> List[Transcript]:
+    return [Transcript(text=word.word, timestamp=word.start) for word in timings]
 
 
 def word_timing_to_text(timings: List[WordTiming]) -> str:
@@ -54,8 +53,8 @@ def transcribe_file(files: List[Path]):
         readability_scores = calculate_scores(transcribed_text)
         results.append(
             {
-                "transcribed_text": transcribed_text,
+                "transcript": word_timing_to_json(word_timings),
+                "readability": readability_scores,
             }
-            | readability_scores
         )
     return results
