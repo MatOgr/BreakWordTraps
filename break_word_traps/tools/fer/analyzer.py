@@ -1,3 +1,4 @@
+import os
 import time
 import warnings
 
@@ -15,6 +16,8 @@ warnings.simplefilter("ignore", UserWarning)
 
 
 ### Models
+MODELS_PATH = os.path.dirname(os.path.abspath(__file__)) + "/models/"
+
 BACKBONE = "FER_static_ResNet50_AffectNet.pt"
 # name_LSTM_model = 'IEMOCAP'
 # name_LSTM_model = 'CREMA-D'
@@ -41,12 +44,14 @@ class FER:
 
     def load_models(self, name_backbone_model, name_LSTM_model):
         pth_backbone_model = ResNet50(7, channels=3)
-        pth_backbone_model.load_state_dict(torch.load(name_backbone_model))
+        pth_backbone_model.load_state_dict(
+            torch.load(MODELS_PATH + name_backbone_model)
+        )
         self.backbone = pth_backbone_model
 
         pth_LSTM_model = LSTMPyTorch()
         pth_LSTM_model.load_state_dict(
-            torch.load("FER_dinamic_LSTM_{0}.pt".format(name_LSTM_model))
+            torch.load(MODELS_PATH + "FER_dinamic_LSTM_{0}.pt".format(name_LSTM_model))
         )
         self.lstm = pth_LSTM_model
 
@@ -54,7 +59,7 @@ class FER:
         self.backbone.eval()
         self.lstm.eval()
 
-    def analyse_image(self, frame) -> Emotion | None:
+    def analyse_image(self, frame: np.ndarray) -> Emotion | None:
         with FaceMesh(
             max_num_faces=1,
             refine_landmarks=False,
@@ -78,15 +83,13 @@ class FER:
         # logger.debug(results)
         if results.multi_face_landmarks:
             for fl in results.multi_face_landmarks:
-                width, height = image.shape
+                width, height, _ = image.shape
                 startX, startY, endX, endY = get_box(fl, width, height)
                 cur_face = image[startY:endY, startX:endX]
 
                 cur_face = pth_processing(Image.fromarray(cur_face))
                 features = (
-                    torch.nn.functional.relu(
-                        self.pth_backbone_model.extract_features(cur_face)
-                    )
+                    torch.nn.functional.relu(self.backbone.extract_features(cur_face))
                     .detach()
                     .numpy()
                 )
@@ -98,7 +101,7 @@ class FER:
 
                 lstm_f = torch.from_numpy(np.vstack(lstm_features))
                 lstm_f = torch.unsqueeze(lstm_f, 0)
-                output = self.pth_LSTM_model(lstm_f).detach().numpy()
+                output = self.lstm(lstm_f).detach().numpy()
 
                 cl = np.argmax(output)
                 # logger.debug(f"{cl =}")
@@ -112,3 +115,12 @@ class FER:
         processing_time = time.time() - start
         # logger.debug(f"Inference time: {processing_time}")
         return result
+
+
+def retrieve_emotion(image: bytes) -> Emotion | None:
+    frame = cv2.imdecode(np.frombuffer(image, np.uint8), -1)
+    fer = FER()
+    fer.eval()
+    print(type(frame), frame.shape)
+    emotion = fer.analyse_image(frame)
+    return emotion

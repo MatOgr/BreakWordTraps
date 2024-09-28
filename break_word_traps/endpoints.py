@@ -6,7 +6,8 @@ from fastapi import FastAPI, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .tools.fer.analyzer import FER, Emotion
+from .schemas import AnalysisResults
+from .tools.fer.analyzer import FER, Emotion, retrieve_emotion
 
 
 class _FastAPIServer:
@@ -27,7 +28,7 @@ class _FastAPIServer:
         for method, endpoint, func in (
             ("get", "/health", self.health),
             ("post", "/process-video", self.process_video),
-            ("post", "/retrieve-emotion", self.process_image),
+            ("post", "/retrieve-emotion-test", self.process_image),
         ):
             register_func = getattr(self._app, method, None)
             if register_func is None:
@@ -40,20 +41,15 @@ class _FastAPIServer:
     def health(self):
         return {"health": "OK"}
 
-    def process_video(self, request: Request, file: UploadFile):
+    def process_video(self, request: Request, file: UploadFile) -> AnalysisResults:
         # TODO add processing
         return {"result": "OK"}
 
-    def process_image(
+    async def process_image(
         self, request: Request, file: UploadFile
     ) -> Emotion | Literal["No emotion detected"]:
-        return self.retrieve_emotion(file.file)
-
-    def retrieve_emotion(self, image: np.ndarray) -> Emotion | None:
-        fer = FER()
-        fer.eval()
-        emotion = fer.analyse_image(image)
-        return emotion
+        content = await file.read()
+        return retrieve_emotion(content)
 
     @property
     def app(self):
