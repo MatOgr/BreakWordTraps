@@ -1,15 +1,16 @@
-import os
-import aiofile
 import asyncio
-import shutil
 import logging
+import os
+import shutil
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, UploadFile
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Callable, Optional
 from pathlib import Path
+from typing import Callable, List, Optional
 from uuid import uuid4
+
+import aiofile
+from fastapi import FastAPI, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from break_word_traps.extract_autio import extract
 from break_word_traps.utils.service_types import ServiceType
@@ -44,6 +45,7 @@ class _FastAPIServer:
         self.fer_server_address = fer_server_address
         self.llm_server_address = llm_server_address
         self._lock = asyncio.Lock()
+        self.prepare_func = None
 
         self._app.add_middleware(
             CORSMiddleware,
@@ -62,11 +64,17 @@ class _FastAPIServer:
                 LOG.warn("Addresses for ASR and FER servers should be defined")
             endpoints.append(("post", "/process-video", self.process_video))
         elif self.service_type == ServiceType.ASR:
+            from break_word_traps.whisper.model import prepare_model, transcribe_file
+
             if not self.llm_server_address:
                 LOG.warn("Address for LLM servers is required")
-            # TODO import and add whisper
+            self.prepare_func = prepare_model
             endpoints.append(
-                ("post", "/process-audio", self.create_process_audio_endpoint())
+                (
+                    "post",
+                    "/process-audio",
+                    self.create_process_audio_endpoint(transcribe_file),
+                )
             )
         elif self.service_type == ServiceType.FER:
             # TODO import and add FER
@@ -91,6 +99,8 @@ class _FastAPIServer:
     @asynccontextmanager
     async def lifecycle(self, app: FastAPI):
         self.resources_path.mkdir(exist_ok=True, parents=True)
+        if self.service_type != ServiceType.MAIN and self.prepare_func:
+            self.prepare_func()
         yield
         shutil.rmtree(self.resources_path)
 
