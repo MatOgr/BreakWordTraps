@@ -1,5 +1,4 @@
-from typer import Typer, Option, BadParameter
-from typing import Optional
+from typer import Typer
 import uvicorn
 
 
@@ -12,12 +11,8 @@ cli = Typer()
 def run_server(
     host: str = "127.0.0.1",
     port: int = 8998,
-    api_key: Optional[str] = Option(None, envvar="API_KEY"),
 ):
-    if not api_key:
-        raise BadParameter("API_KEY must be defined")
-
-    server = server_app(api_key=api_key)
+    server = server_app()
 
     uvicorn.run(
         server.app,
