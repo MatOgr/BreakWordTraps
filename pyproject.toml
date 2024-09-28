@@ -19,10 +19,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-whisper = [
+asr = [
   "stable-ts[hf]",
-]
-readability = [
   "py-readability-metrics",
 ]
 

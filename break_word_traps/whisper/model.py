@@ -46,10 +46,16 @@ def prepare_model():
     MODEL.prepare_model()
 
 
-def transcribe_file(file: Path):
-    word_timings = MODEL.transcribe(file)
-    transcribed_text = word_timing_to_text(word_timings)
-    readability_scores = calculate_scores(transcribed_text)
-    return {
-        "transcribed_text": transcribed_text,
-    } | readability_scores
+def transcribe_file(files: List[Path]):
+    results = []
+    for file in files:
+        word_timings = MODEL.transcribe(file)
+        transcribed_text = word_timing_to_text(word_timings)
+        readability_scores = calculate_scores(transcribed_text)
+        results.append(
+            {
+                "transcribed_text": transcribed_text,
+            }
+            | readability_scores
+        )
+    return results

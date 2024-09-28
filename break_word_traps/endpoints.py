@@ -100,6 +100,7 @@ class _FastAPIServer:
     async def lifecycle(self, app: FastAPI):
         self.resources_path.mkdir(exist_ok=True, parents=True)
         if self.service_type != ServiceType.MAIN and self.prepare_func:
+            LOG.info("Preparing runtime")
             self.prepare_func()
         yield
         shutil.rmtree(self.resources_path)
@@ -136,12 +137,12 @@ class _FastAPIServer:
             for saved_file in saved_files:
                 saved_file.unlink()
 
-    async def create_process_audio_endpoint(self, func: Callable):
+    def create_process_audio_endpoint(self, func: Callable):
         async def process_audio(files: List[UploadFile]):
             saved_audio_files = await self.receive_files(files)
             try:
                 await self._lock.acquire()
-                func(saved_audio_files)
+                return func(saved_audio_files)
             finally:
                 self._lock.release()
                 for saved_file in saved_audio_files:
@@ -149,7 +150,7 @@ class _FastAPIServer:
 
         return process_audio
 
-    async def create_process_images_endpoint(self, func: Callable):
+    def create_process_images_endpoint(self, func: Callable):
         async def process_images(images: List[UploadFile]):
             images = await asyncio.gather(*[image.read() for image in images])
             try:
@@ -160,7 +161,7 @@ class _FastAPIServer:
 
         return process_images
 
-    async def create_process_text_endpoint(self, func: Callable):
+    def create_process_text_endpoint(self, func: Callable):
         async def process_text(texts: List[str]):
             try:
                 await self._lock.acquire()
