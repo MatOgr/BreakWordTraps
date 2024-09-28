@@ -2,11 +2,14 @@ from fastapi import FastAPI, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 
+from break_word_traps.utils.service_types import ServiceType
+
 
 class _FastAPIServer:
     _app = FastAPI()
 
-    def __init__(self):
+    def __init__(self, service_type: ServiceType):
+        self.service_type = service_type
         self.api_prefix = "/api"
 
         self._app.add_middleware(
@@ -15,10 +18,22 @@ class _FastAPIServer:
             allow_methods="*",
             allow_headers="*",
         )
-        for method, endpoint, func in (
+        endpoints = [
             ("get", "/health", self.health),
-            ("post", "/process-video", self.process_video),
-        ):
+        ]
+        if self.service_type == ServiceType.MAIN:
+            endpoints.append(("post", "/process-video", self.process_video))
+        elif self.service_type == ServiceType.ASR:
+            # TODO import and add whisper
+            pass
+        elif self.service_type == ServiceType.FER:
+            # TODO import and add FEr
+            pass
+        elif self.service_type == ServiceType.LLM:
+            # TODO import and add LLM
+            pass
+
+        for method, endpoint, func in endpoints:
             register_func = getattr(self._app, method, None)
             if register_func is None:
                 raise Exception(f"Method {method} not known")
