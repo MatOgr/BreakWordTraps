@@ -1,7 +1,7 @@
-from typing import Literal
+from typing import List, Literal
+
 from fastapi import FastAPI, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from .tools.fer.analyzer import Emotion, retrieve_emotion
 
