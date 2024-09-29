@@ -263,7 +263,8 @@ class _FastAPIServer:
                     headers={API_KEY_NAME: self.api_key},
                 )
                 response = response.json()
-                results |= response
+                for i, (result, resp) in enumerate(zip(results, response)):
+                    results[i] |= response
             return results
 
         return process_audio
