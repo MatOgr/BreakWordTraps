@@ -19,7 +19,12 @@ def run_backend(
     if not api_key:
         raise BadParameter("API_KEY must be defined")
 
-    server = server_app(service_type=ServiceType.MAIN, api_key=api_key)
+    server = server_app(
+        service_type=ServiceType.MAIN,
+        api_key=api_key,
+        asr_server_address=asr_server_address,
+        fer_server_address=fer_server_address,
+    )
     uvicorn.run(
         server.app,
         host=host,
@@ -38,12 +43,12 @@ def run_subservice(
     if not api_key:
         raise BadParameter("API_KEY must be defined")
 
-    server = server_app(service_type=service_type, api_key=api_key)
-    uvicorn.run(
-        server.app,
-        host=host,
-        port=port,
+    server = server_app(
+        service_type=service_type,
+        api_key=api_key,
+        llm_server_address=llm_server_address,
     )
+    uvicorn.run(server.app, host=host, port=port)
 
 
 if __name__ == "__main__":

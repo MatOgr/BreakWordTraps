@@ -5,7 +5,7 @@ import warnings
 import cv2
 import numpy as np
 import torch
-from typing import Optional
+from typing import Optional, Tuple
 from mediapipe.python.solutions.face_mesh import FaceMesh
 from PIL import Image
 
@@ -127,8 +127,12 @@ def prepare_model():
     MODEL.eval()
 
 
-def retrieve_emotion(image: bytes) -> Emotion | None:
-    frame = cv2.imdecode(np.frombuffer(image, np.uint8), -1)
-    print(type(frame), frame.shape)
-    emotion = MODEL.analyse_image(frame)
+def retrieve_emotion(image) -> Emotion | None:
+    # print(type(image))
+    # # print(image)
+    # frame = np.asarray(bytearray(image), dtype=np.uint8)
+    # print(frame)
+    # frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+    # print(frame)
+    emotion = MODEL.analyse_image(image)
     return emotion
