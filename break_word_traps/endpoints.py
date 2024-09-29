@@ -159,8 +159,15 @@ class _FastAPIServer:
         saved_files = await self.receive_files(files)
         try:
             audio_files = []
+            file_names = []
             for saved_file in saved_files:
-                audio_files.append(extract(saved_file, saved_file.with_suffix(".wav")))
+                file_names.append(saved_file.name)
+                audio_files.append(
+                    extract(
+                        saved_file,
+                        saved_file.with_suffix(".wav"),
+                    )
+                )
             buffers = [audio_file.open("rb") for audio_file in audio_files]
             asr_request = asyncio.to_thread(
                 requests.post,
@@ -213,7 +220,7 @@ class _FastAPIServer:
             asr_results = results[0].json()
             fer_results = [r.json() for r in results[1:]]
             video_results = []
-            for asr, fer in zip(asr_results, fer_results):
+            for name, asr, fer in zip(file_names, asr_results, fer_results):
                 video_results.append(
                     asr
                     | {
@@ -224,6 +231,7 @@ class _FastAPIServer:
                         "sentiment": "",
                         "questions": [],
                         "errors": [],
+                        "fileName": name,
                     }
                 )
 

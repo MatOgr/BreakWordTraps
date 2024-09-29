@@ -41,6 +41,7 @@ class Transcript(BaseModel):
 
 
 class VideoResult(BaseModel):
+    file_name: str = Field(alias="fileName")
     fer_results: List[FERResult] = Field(alias="ferResults")
     transcript: List[Transcript]
     target_group: str | None = Field(default=None, alias="targetGroup")
