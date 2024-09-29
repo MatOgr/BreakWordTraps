@@ -18,7 +18,7 @@ def word_timing_to_text(timings: List[WordTiming]) -> str:
 
 
 class WhisperModel:
-    def __init__(self, model_type: str, device: str = "cuda"):
+    def __init__(self, model_type: str, device: str = "cpu"):
         self.model_type = model_type
         self.model = None
         self.device = device
@@ -54,6 +54,7 @@ def transcribe_file(files: List[Path]):
         results.append(
             {
                 "transcript": word_timing_to_json(word_timings),
+                "text": word_timing_to_text(word_timings),
                 "readability": readability_scores,
             }
         )

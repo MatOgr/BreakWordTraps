@@ -17,7 +17,6 @@ from fastapi.responses import JSONResponse
 
 from break_word_traps.extract_autio import extract
 from break_word_traps.schemas import ResultsDTO
-from break_word_traps.tools.fer.types import Emotion
 from break_word_traps.utils.service_types import ServiceType
 
 API_KEY_NAME = "x-api-key"
@@ -106,9 +105,15 @@ class _FastAPIServer:
                 )
             )
         elif self.service_type == ServiceType.LLM:
-            # TODO import and add LLM
+            from break_word_traps.tools.bielik.model import prepare_model, analyze_text
+
+            self.prepare_func = prepare_model
             endpoints.append(
-                ("post", "/process-text", self.create_process_text_endpoint())
+                (
+                    "post",
+                    "/process-text",
+                    self.create_process_text_endpoint(analyze_text),
+                )
             )
         # Add API_KEY validation for subservices
         if self.service_type != ServiceType.MAIN:
@@ -144,7 +149,7 @@ class _FastAPIServer:
                 save_uploaded_file(
                     file,
                     self.resources_path
-                    / f"{uuid4()}{'_' + file.filename if hasattr(file, "filename") else ''}",
+                    / f"{uuid4()}{'_' + file.filename if hasattr(file, 'filename') else ''}",
                 )
                 for file in files
             ]
@@ -241,13 +246,25 @@ class _FastAPIServer:
     def create_process_audio_endpoint(self, func: Callable):
         async def process_audio(files: List[UploadFile]):
             saved_audio_files = await self.receive_files(files)
+            results = None
             try:
                 await self._lock.acquire()
-                return func(saved_audio_files)
+                results = func(saved_audio_files)
             finally:
                 self._lock.release()
                 for saved_file in saved_audio_files:
                     saved_file.unlink()
+
+            if self.llm_server_address:
+                response = await asyncio.to_thread(
+                    requests.post,
+                    f"http://{self.llm_server_address}/api/process-text",
+                    data={"text": [r["text"] for r in results]},
+                    headers={API_KEY_NAME: self.api_key},
+                )
+                response = response.json()
+                results |= response
+            return results
 
         return process_audio
 

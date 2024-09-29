@@ -26,6 +26,14 @@ asr = [
   "stable-ts[hf]",
   "py-readability-metrics",
 ]
+fer = [
+  "mediapipe",
+  "torchvision",
+]
+llm = [
+  "transformers",
+  "torch",
+]
 
 [project.scripts]
 bwt = "break_word_traps.entrypoint:cli"
