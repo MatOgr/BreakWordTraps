@@ -8,14 +8,17 @@ from typing import Callable, List, Literal, Optional
 from uuid import uuid4
 
 import aiofile
+
+import cv2
+import requests
 from fastapi import FastAPI, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from break_word_traps.extract_autio import extract
+from break_word_traps.schemas import ResultsDTO
 from break_word_traps.tools.fer.types import Emotion
 from break_word_traps.utils.service_types import ServiceType
-from break_word_traps.schemas import ResultsDTO
 
 API_KEY_NAME = "x-api-key"
 LOG = logging.Logger(Path(__file__).name)
@@ -26,6 +29,13 @@ async def save_uploaded_file(file: UploadFile, path: Path, chunk_size=2048):
         while chunk := await file.read(chunk_size):
             await fd.write(chunk)
     return path
+
+
+async def read_file(file: UploadFile, chunk_size=2048):
+    b = bytearray()
+    while chunk := await file.read(chunk_size):
+        b.extend(chunk)
+    return b
 
 
 class _FastAPIServer:
@@ -46,6 +56,7 @@ class _FastAPIServer:
         self.fer_server_address = fer_server_address
         self.llm_server_address = llm_server_address
         self._lock = asyncio.Lock()
+        # self.async_client = aiosonic.HTTPClient()
         self.prepare_func = None
 
         self._app.add_middleware(
@@ -133,7 +144,7 @@ class _FastAPIServer:
                 save_uploaded_file(
                     file,
                     self.resources_path
-                    / f"{uuid4()}{'_' + file.filename if hasattr(file, "filename") else ''}",
+                    / f"{uuid4()}{'_' + file.filename if hasattr(file, 'filename') else ''}",
                 )
                 for file in files
             ]
@@ -142,10 +153,87 @@ class _FastAPIServer:
     async def process_video(self, request: Request, files: List[UploadFile]):
         saved_files = await self.receive_files(files)
         try:
+            audio_files = []
             for saved_file in saved_files:
-                extract(saved_file, saved_file.with_suffix(".wav"))
+                audio_files.append(extract(saved_file, saved_file.with_suffix(".wav")))
+            buffers = [audio_file.open("rb") for audio_file in audio_files]
+            asr_request = asyncio.to_thread(
+                requests.post,
+                f"http://{self.asr_server_address}/api/process-audio",
+                files=[
+                    ("files", (file.name, buf))
+                    for file, buf in zip(audio_files, buffers)
+                ],
+                headers={API_KEY_NAME: self.api_key},
+            )
+
+            fer_requests = []
+            for saved_file in saved_files:
+                vidcap = cv2.VideoCapture(str(saved_file))
+                success, image = vidcap.read()
+                images = [self.resources_path / f"{uuid4()}_frame_0.png"]
+                cv2.imwrite(images[-1], image)
+                count = 0
+                while success:
+                    success, image = vidcap.read()
+                    if count % 25 == 0:
+                        images.append(
+                            self.resources_path / f"{uuid4()}_frame_{count}.png"
+                        )
+                        cv2.imwrite(images[-1], image)
+                    count += 1
+                img_buff = [image.open("rb") for image in images]
+
+                fer_requests.append(
+                    asyncio.to_thread(
+                        requests.post,
+                        f"http://{self.fer_server_address}/api/process-images",
+                        files=[
+                            (
+                                "images",
+                                (
+                                    image.name,
+                                    buf,
+                                ),
+                            )
+                            for image, buf in zip(images, img_buff)
+                        ],
+                        headers={API_KEY_NAME: self.api_key},
+                    )
+                )
+
+            results = await asyncio.gather(asr_request, *fer_requests)
+            [b.close() for b in buffers]
+            [image.close() for image in img_buff]
+            asr_results = results[0].json()
+            fer_results = [r.json() for r in results[1:]]
+            video_results = []
+            for asr, fer in zip(asr_results, fer_results):
+                video_results.append(
+                    asr
+                    | {
+                        "ferResults": [
+                            {"emotion": f, "timestamp": i} for i, f in enumerate(fer)
+                        ],
+                        "targetGroup": "",
+                        "sentiment": "",
+                        "questions": [],
+                        "errors": [],
+                    }
+                )
+
             # TODO add frames extractions, send requests and collect data
-            return {"result": "OK"}
+            return {
+                "videoResults": video_results,
+                "summary": {
+                    "overall": {
+                        "totalFiles": 0,
+                        "totalErrors": 0,
+                        "wordsPerMinute": 0,
+                    },
+                    "statistics": [],
+                },
+            }
         finally:
             for saved_file in saved_files:
                 saved_file.unlink()
@@ -166,11 +254,27 @@ class _FastAPIServer:
     def create_process_images_endpoint(self, func: Callable):
         async def process_images(
             images: List[UploadFile],
-        ) -> Emotion | Literal["No emotion detected"]:
-            images = await asyncio.gather(*[image.read() for image in images])
+        ):
+            names = [image.filename for image in images]
+            saved_images = await asyncio.gather(
+                *[
+                    save_uploaded_file(
+                        image, self.resources_path / f"{uuid4()}_frame.png"
+                    )
+                    for image in images
+                ]
+            )
             try:
                 await self._lock.acquire()
-                return func(images)
+                results = []
+                for name, image in zip(names, saved_images):
+                    img = cv2.imread(str(image))
+                    emotion = func(img)
+                    if emotion:
+                        results.append(emotion)
+                    else:
+                        results.append("No emotion detected")
+                return results
             finally:
                 self._lock.release()
 

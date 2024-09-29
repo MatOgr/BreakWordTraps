@@ -9,13 +9,16 @@ version = "0.0.1"
 readme = "README.md"
 dependencies = [
   "aiofile",
+  "aiosonic",
   "fastapi",
   "python-multipart",
   "uvicorn",
   "uvloop ; platform_system != 'Windows'",
   "typer",
   "rich",
-  "audio-extract"
+  "imageio_ffmpeg",
+  "opencv-python",
+  "requests",
 ]
 
 [project.optional-dependencies]
