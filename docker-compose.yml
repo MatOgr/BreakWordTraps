@@ -1,0 +1,57 @@
+services:
+  backend:
+    image: przemowa:backend
+    build: 
+      dockerfile: ./docker/Dockerfile_backend.dockerfile
+    container_name: backend
+    environment:
+      API_KEY: 121af95dbc794764dcc31b29a636e96105c08a6f821f1a8c0b15f9d15c1ebeda 
+    ports:
+      - "8888:8888"
+    networks:
+      - przemowa_main
+    depends_on:
+      - asr
+      - fer
+      - llm
+  asr:
+    image: przemowa:asr
+    build:
+      dockerfile: ./docker/Dockerfile_asr.dockerfile
+    container_name: asr
+    environment:
+      API_KEY: 121af95dbc794764dcc31b29a636e96105c08a6f821f1a8c0b15f9d15c1ebeda 
+    ports:
+      - "8889:8889"
+    depends_on:
+      - llm
+    networks:
+      - przemowa_main
+  fer:
+    image: przemowa:fer
+    build:
+      dockerfile: ./docker/Dockerfile_fer.dockerfile
+    container_name: fer
+    environment:
+      API_KEY: 121af95dbc794764dcc31b29a636e96105c08a6f821f1a8c0b15f9d15c1ebeda 
+    ports:
+      - "8890:8890"
+    networks:
+      - przemowa_main
+  llm:
+    image: przemowa:llm
+    build:
+      dockerfile: ./docker/Dockerfile_llm.dockerfile
+    container_name: llm
+    environment:
+      API_KEY: 121af95dbc794764dcc31b29a636e96105c08a6f821f1a8c0b15f9d15c1ebeda 
+    ports:
+      - "8891:8891"
+    networks:
+      - przemowa_main
+networks:
+  przemowa_main:
+    driver: bridge
+    # default MTU size in docker-compose is 1500
+    driver_opts:
+      com.docker.network.driver.mtu: 1440
